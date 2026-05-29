@@ -1,26 +1,120 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { mockClients, type CityData, type LocationSede } from '../data';
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from 'recharts';
-import { ChevronDown, ChevronUp, Radio, Droplet, StickyNote, Sparkles, Wind, Building2, MapPin, Briefcase } from 'lucide-react';
+import { BarChart, Bar, AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid, Legend, PieChart, Pie, Cell, ComposedChart, Line } from 'recharts';
+import { Droplet, Sparkles, Building2, MapPin, Briefcase, Calendar, Filter, Clock } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { useFilter } from '../context/FilterContext';
 
-interface DashboardProps {
-  user: { name: string; role: string; assignedSedeId?: number };
-}
+// Helper: fecha local como string YYYY-MM-DD
+const getTodayStr = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
 
-type TimeRange = 'hoy' | 'ayer' | 'semana_pasada' | 'mes_pasado';
+// Helper: Formatea la fecha seleccionada en español amigable
+const formatDateSpanish = (dateStr: string) => {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (parts.length !== 3) return dateStr;
+  const monthInt = parseInt(parts[1], 10);
+  const day = parseInt(parts[2], 10);
+  const months = [
+    'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+    'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+  ];
+  const monthName = months[monthInt - 1] || '';
 
-export default function Dashboard({ user }: DashboardProps) {
+  const todayStr = getTodayStr();
+  if (dateStr === todayStr) {
+    return `hoy, ${day} de ${monthName}`;
+  }
+  return `el ${day} de ${monthName}`;
+};
+
+// Helper: Genera la lista de las 12 horas previas a partir de una hora y fecha base
+const get12HourWindow = (baseDateStr: string, endHour: number) => {
+  const windowSlots: { dateStr: string; hour: number; label: string; hourKey: string }[] = [];
+  for (let i = 11; i >= 0; i--) {
+    const targetDate = new Date(`${baseDateStr}T${String(endHour).padStart(2, '0')}:00:00`);
+    targetDate.setHours(targetDate.getHours() - i);
+
+    const year = targetDate.getFullYear();
+    const month = String(targetDate.getMonth() + 1).padStart(2, '0');
+    const day = String(targetDate.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+
+    const hour = targetDate.getHours();
+    const hourKey = String(hour).padStart(2, '0');
+    const label = `${hourKey}:00`;
+
+    windowSlots.push({ dateStr, hour, label, hourKey });
+  }
+  return windowSlots;
+};
+
+export default function Dashboard() {
+  const { user } = useAuth();
+  if (!user) return null;
   const isSupervisor = user.role === 'SUPERVISOR_SEDE';
 
   // CONTROL DE FILTROS EN CASCADA COMPLETO
   const [selectedClientId, setSelectedClientId] = useState<number>(1);
   const [selectedCityName, setSelectedCityName] = useState<string>('Bogotá');
   const [selectedSedeId, setSelectedSedeId] = useState<number>(101);
-  
-  // Temporalidad y filtros de botón métrico
-  const [timeRange, setTimeRange] = useState<TimeRange>('hoy');
-  const [activeMetricFilter, setActiveMetricFilter] = useState<'papel' | 'jabon' | 'aseo' | 'agua'>('aseo');
-  const [openFloors, setOpenFloors] = useState<Record<string, boolean>>({});
+
+  // Filtros globales unificados desde el Context
+  const { selectedDate, setSelectedDate, selectedHour } = useFilter();
+
+  // Filtros avanzados del panel de control
+  const [selectedMonth, setSelectedMonth] = useState<string>('custom'); // 'custom', '2026-05', '2026-04'
+  const [selectedRestroomId, setSelectedRestroomId] = useState<string>('all');
+  const [startHour, setStartHour] = useState<number>(0);
+  const [endHour, setEndHour] = useState<number>(23);
+
+  // Resetear el filtro de baño si cambia de sede
+  useEffect(() => {
+    setSelectedRestroomId('all');
+  }, [selectedSedeId]);
+
+  const handleStartHourChange = (val: number) => {
+    setStartHour(val);
+    if (val > endHour) {
+      setEndHour(val);
+    }
+  };
+
+  const handleEndHourChange = (val: number) => {
+    setEndHour(val);
+    if (val < startHour) {
+      setStartHour(val);
+    }
+  };
+
+  const [, setOpenFloors] = useState<Record<string, boolean>>({});
+
+  // Refs de desplazamiento para gráficas horizontales
+  const barChartContainerRef = useRef<HTMLDivElement>(null);
+  const areaChartContainerRef = useRef<HTMLDivElement>(null);
+
+  // Sincronizar el scroll de las gráficas al cambiar la hora activa
+  useEffect(() => {
+    const scrollToActiveHour = () => {
+      // El ancho total de las gráficas es de 1800px (75px por hora para las 24 horas)
+      // Restamos 11 horas para que la hora activa seleccionada quede alineada en el extremo derecho del viewport
+      const hourWidth = 1800 / 24;
+      const scrollPos = Math.max(0, (selectedHour - 11) * hourWidth);
+
+      if (barChartContainerRef.current) {
+        barChartContainerRef.current.scrollLeft = scrollPos;
+      }
+      if (areaChartContainerRef.current) {
+        areaChartContainerRef.current.scrollLeft = scrollPos;
+      }
+    };
+
+    const timer = setTimeout(scrollToActiveHour, 200);
+    return () => clearTimeout(timer);
+  }, [selectedHour]);
 
   // Memoización segura de jerarquías para prevenir desfases de estado
   const currentClient = useMemo(() => {
@@ -73,69 +167,116 @@ export default function Dashboard({ user }: DashboardProps) {
     }
   }, [currentSede]);
 
-  // Validador estricto de coincidencia de rangos temporales
-  const filterByTimeRange = (timestampStr: string) => {
-    const recordDate = new Date(timestampStr).toDateString();
-    const today = new Date();
+  // Límite de las 12 horas a partir del filtro de fecha y hora seleccionada
+  const windowSlots = useMemo(() => {
+    return get12HourWindow(selectedDate, selectedHour);
+  }, [selectedDate, selectedHour]);
 
-    if (timeRange === 'hoy') return recordDate === today.toDateString();
-    if (timeRange === 'ayer') {
-      const yesterday = new Date();
-      yesterday.setDate(today.getDate() - 1);
-      return recordDate === yesterday.toDateString();
-    }
-    if (timeRange === 'semana_pasada') {
-      const target = new Date();
-      target.setDate(today.getDate() - 7);
-      return recordDate === target.toDateString();
-    }
-    if (timeRange === 'mes_pasado') {
-      const target = new Date();
-      target.setDate(today.getDate() - 30);
-      return recordDate === target.toDateString();
-    }
-    return false;
-  };
+  const windowPrefixes = useMemo(() => {
+    return windowSlots.map(s => `${s.dateStr}T${s.hourKey}`);
+  }, [windowSlots]);
 
-  // Pipeline analítico temporal para inyectar datos a los dos paneles gráficos
+  // Pipeline analítico — genera datos basados en filtros de mes, baño y rango de horas
   const processedData = useMemo(() => {
     let totalVisitsCount = 0;
     const totals = { papel: 0, jabon: 0, aseo: 0, agua: 0 };
-    
-    const hourlyMap: Record<string, { label: string; papel: number; jabon: number; aseo: number; agua: number; visitas: number }> = {
-      "07": { label: "07:00 AM", papel: 0, jabon: 0, aseo: 0, agua: 0, visitas: 0 },
-      "08": { label: "08:00 AM", papel: 0, jabon: 0, aseo: 0, agua: 0, visitas: 0 },
-      "09": { label: "09:00 AM", papel: 0, jabon: 0, aseo: 0, agua: 0, visitas: 0 },
-      "10": { label: "10:00 AM", papel: 0, jabon: 0, aseo: 0, agua: 0, visitas: 0 }
-    };
 
-    if (!currentSede || !currentSede.restrooms) {
-      return { restrooms: [], totalVisits: 0, buttonTotals: totals, chartData: Object.values(hourlyMap) };
+    // Inicializar el arreglo de datos del gráfico para las 24 horas
+    const chartDataArray: any[] = [];
+    const hourlyMap: Record<string, any> = {};
+    for (let h = 0; h < 24; h++) {
+      const key = String(h).padStart(2, '0');
+      const label = `${key}:00`;
+
+      const slot = {
+        label,
+        papel: 0,
+        jabon: 0,
+        aseo: 0,
+        agua: 0,
+        visitas: 0,
+        hourKey: key,
+        dateStr: selectedMonth === 'custom' ? selectedDate : selectedMonth
+      };
+      chartDataArray.push(slot);
+      hourlyMap[key] = slot;
     }
 
-    const restroomsTransformed = currentSede.restrooms.map(r => {
-      const matchedVisits = r.visitas_historicas.filter(v => filterByTimeRange(v.timestamp));
-      const matchedClicks = r.clicks_historicos.filter(c => filterByTimeRange(c.timestamp));
+    // Filtrar los baños de la sede
+    const restroomsToProcess = currentSede && currentSede.restrooms ? currentSede.restrooms : [];
+    const restroomsFiltered = selectedRestroomId === 'all'
+      ? restroomsToProcess
+      : restroomsToProcess.filter(r => r.id === Number(selectedRestroomId));
 
-      totalVisitsCount += matchedVisits.length;
+    // Determinar la coincidencia de periodo (por día exacto o mes completo)
+    const matchPeriod = (timestamp: string) => {
+      if (selectedMonth === 'custom') {
+        return timestamp.startsWith(selectedDate);
+      }
+      return timestamp.startsWith(selectedMonth);
+    };
 
-      matchedVisits.forEach(v => {
-        const hourStr = v.timestamp.split('T')[1]?.substring(0, 2);
-        if (hourlyMap[hourStr]) {
-          hourlyMap[hourStr].visitas++;
+    // Calcular actividad para las 24 horas del periodo seleccionado filtrando por rango de horas
+    const rawHourActivity: Record<number, { visitas: number; clicks: number }> = {};
+    for (let h = 0; h < 24; h++) {
+      rawHourActivity[h] = { visitas: 0, clicks: 0 };
+    }
+
+    restroomsFiltered.forEach(r => {
+      r.visitas_historicas.forEach(v => {
+        if (matchPeriod(v.timestamp)) {
+          const hour = parseInt(v.timestamp.split('T')[1]?.substring(0, 2) || '0', 10);
+          if (hour >= startHour && hour <= endHour) {
+            if (rawHourActivity[hour]) rawHourActivity[hour].visitas++;
+            const hourStr = v.timestamp.split('T')[1]?.substring(0, 2);
+            if (hourlyMap[hourStr]) hourlyMap[hourStr].visitas++;
+          }
+        }
+      });
+      r.clicks_historicos.forEach(c => {
+        if (matchPeriod(c.timestamp)) {
+          const hour = parseInt(c.timestamp.split('T')[1]?.substring(0, 2) || '0', 10);
+          if (hour >= startHour && hour <= endHour) {
+            if (rawHourActivity[hour]) rawHourActivity[hour].clicks++;
+            const hourStr = c.timestamp.split('T')[1]?.substring(0, 2);
+            if (hourlyMap[hourStr]) hourlyMap[hourStr][c.type]++;
+          }
+        }
+      });
+    });
+
+    const restroomsTransformed = restroomsFiltered.map(r => {
+      // Filtrar visitas dentro de la ventana de visualización activa
+      const matchedVisits = r.visitas_historicas.filter(v => {
+        if (selectedMonth === 'custom') {
+          const prefix = v.timestamp.substring(0, 13);
+          const hour = parseInt(v.timestamp.split('T')[1]?.substring(0, 2) || '0', 10);
+          return windowPrefixes.includes(prefix) && hour >= startHour && hour <= endHour;
+        } else {
+          const hour = parseInt(v.timestamp.split('T')[1]?.substring(0, 2) || '0', 10);
+          return v.timestamp.startsWith(selectedMonth) && hour >= startHour && hour <= endHour;
         }
       });
 
+      // Filtrar clicks dentro de la ventana de visualización activa
+      const matchedClicks = r.clicks_historicos.filter(c => {
+        if (selectedMonth === 'custom') {
+          const prefix = c.timestamp.substring(0, 13);
+          const hour = parseInt(c.timestamp.split('T')[1]?.substring(0, 2) || '0', 10);
+          return windowPrefixes.includes(prefix) && hour >= startHour && hour <= endHour;
+        } else {
+          const hour = parseInt(c.timestamp.split('T')[1]?.substring(0, 2) || '0', 10);
+          return c.timestamp.startsWith(selectedMonth) && hour >= startHour && hour <= endHour;
+        }
+      });
+
+      totalVisitsCount += matchedVisits.length;
+
       const localTotals = { papel: 0, jabon: 0, aseo: 0, agua: 0 };
-      
+
       matchedClicks.forEach(c => {
         localTotals[c.type]++;
         totals[c.type]++;
-
-        const hourStr = c.timestamp.split('T')[1]?.substring(0, 2);
-        if (hourlyMap[hourStr]) {
-          hourlyMap[hourStr][c.type]++;
-        }
       });
 
       return {
@@ -145,83 +286,308 @@ export default function Dashboard({ user }: DashboardProps) {
       };
     });
 
+    // Recortar los datos de las gráficas según el rango de horas especificado
+    const filteredChartData = chartDataArray.filter(item => {
+      const hour = parseInt(item.hourKey, 10);
+      return hour >= startHour && hour <= endHour;
+    });
+
     return {
       restrooms: restroomsTransformed,
       totalVisits: totalVisitsCount,
       buttonTotals: totals,
-      chartData: Object.values(hourlyMap)
+      chartData: filteredChartData,
+      rawHourActivity
     };
-  }, [currentSede, timeRange]);
+  }, [currentSede, selectedDate, selectedMonth, selectedRestroomId, startHour, endHour, windowPrefixes]);
 
-  const restroomsByFloor = useMemo(() => {
-    const groups: Record<string, typeof processedData.restrooms> = {};
-    processedData.restrooms.forEach(r => {
-      if (!groups[r.floor_name]) groups[r.floor_name] = [];
-      groups[r.floor_name].push(r);
+  // const restroomsByFloor = useMemo(() => {
+  //   const groups: Record<string, typeof processedData.restrooms> = {};
+  //   processedData.restrooms.forEach(r => {
+  //     if (!groups[r.floor_name]) groups[r.floor_name] = [];
+  //     groups[r.floor_name].push(r);
+  //   });
+  //   return groups;
+  // }, [processedData.restrooms]);
+
+  const dailySummaryNarrative = useMemo(() => {
+    const chartData = processedData.chartData;
+
+    // 1. Conteo de tránsito total diario
+    let totalVisits = 0;
+    chartData.forEach(item => {
+      totalVisits += item.visitas || 0;
     });
-    return groups;
-  }, [processedData.restrooms]);
+
+    // 2. Rango y hora pico de tránsito
+    let maxVisits = -1;
+    let maxVisitsHour = 12;
+    chartData.forEach((item) => {
+      if (item.visitas > maxVisits) {
+        maxVisits = item.visitas;
+        maxVisitsHour = parseInt(item.hourKey, 10);
+      }
+    });
+
+    const startPeakHour = Math.max(0, maxVisitsHour - 1);
+    const endPeakHour = Math.min(23, maxVisitsHour + 1);
+    const peakRangeStr = `${String(startPeakHour).padStart(2, '0')}:00 y las ${String(endPeakHour).padStart(2, '0')}:00`;
+    const peakHourStr = `${String(maxVisitsHour).padStart(2, '0')}:00`;
+
+    // 3. Insumo/servicio más solicitado en el día
+    let totalPapel = 0;
+    let totalJabon = 0;
+    let totalAseo = 0;
+    let totalAgua = 0;
+
+    chartData.forEach(item => {
+      totalPapel += item.papel || 0;
+      totalJabon += item.jabon || 0;
+      totalAseo += item.aseo || 0;
+      totalAgua += item.agua || 0;
+    });
+
+    const supplies = [
+      { key: 'papel', label: 'peticiones de papel higiénico', count: totalPapel, singular: 'papel higiénico' },
+      { key: 'jabon', label: 'falta de jabón', count: totalJabon, singular: 'jabón' },
+      { key: 'aseo', label: 'alertas de aseo/limpieza', count: totalAseo, singular: 'limpieza' },
+      { key: 'agua', label: 'reportes de olores o flujo de agua', count: totalAgua, singular: 'olores/agua' }
+    ];
+
+    supplies.sort((a, b) => b.count - a.count);
+    const primaryRequest = supplies[0];
+
+    // Hora pico del insumo más solicitado
+    let maxSupplyHour = 12;
+    let maxSupplyCount = -1;
+    chartData.forEach((item) => {
+      const val = item[primaryRequest.key] || 0;
+      if (val > maxSupplyCount) {
+        maxSupplyCount = val;
+        maxSupplyHour = parseInt(item.hourKey, 10);
+      }
+    });
+    const supplyPeakHourStr = `${String(maxSupplyHour).padStart(2, '0')}:00`;
+
+    // 4. Ubicación con mayor afluencia acumulada
+    let maxRestroomName = '';
+    let maxRestroomVisits = -1;
+    const restroomsToProcess = currentSede && currentSede.restrooms ? currentSede.restrooms : [];
+    const restroomsFiltered = selectedRestroomId === 'all'
+      ? restroomsToProcess
+      : restroomsToProcess.filter(r => r.id === Number(selectedRestroomId));
+
+    restroomsFiltered.forEach(r => {
+      const count = r.visitas_historicas.filter(v => {
+        const matchesDate = selectedMonth === 'custom'
+          ? v.timestamp.startsWith(selectedDate)
+          : v.timestamp.startsWith(selectedMonth);
+        const hour = parseInt(v.timestamp.split('T')[1]?.substring(0, 2) || '0', 10);
+        return matchesDate && hour >= startHour && hour <= endHour;
+      }).length;
+
+      if (count > maxRestroomVisits) {
+        maxRestroomVisits = count;
+        maxRestroomName = `${r.name} (${r.floor_name})`;
+      }
+    });
+
+    const formattedPeriod = selectedMonth === 'custom'
+      ? formatDateSpanish(selectedDate)
+      : selectedMonth === '2026-05'
+        ? 'el mes de mayo de 2026'
+        : 'el mes de abril de 2026';
+
+    const hourRangeLabel = `en el rango de ${String(startHour).padStart(2, '0')}:00 a ${String(endHour).padStart(2, '0')}:00`;
+
+    if (totalVisits === 0 && primaryRequest.count === 0) {
+      return `Para **${formattedPeriod}** (${hourRangeLabel}), no se registraron flujos de tránsito peatonal ni llamados de servicio en los sensores. El estado operativo de la sede se reporta sin novedades.`;
+    }
+
+    const trafficText = totalVisits > 0
+      ? `se registró un flujo acumulado de **${totalVisits} personas** en la sede, concentrándose un ritmo de tránsito elevado principalmente entre las **${peakRangeStr}** (con pico máximo a las **${peakHourStr}**), destacando la zona de **${maxRestroomName || 'baños principales'}** con un total de **${maxRestroomVisits} visitas**.`
+      : `el tránsito peatonal general fue imperceptible en los sensores.`;
+
+    const requestText = primaryRequest.count > 0
+      ? `el requerimiento más recurrente fue **${primaryRequest.label}** (registrando **${primaryRequest.count} timbres**), con mayor frecuencia de llamados alrededor de las **${supplyPeakHourStr}**.`
+      : `no se reportaron llamados por falta de insumos o solicitudes de limpieza especial.`;
+
+    const restroomContext = selectedRestroomId !== 'all' ? ` (Filtrado por el baño: **${maxRestroomName}**)` : '';
+
+    const recommendation = primaryRequest.count > 0 && totalVisits > 0
+      ? `Se sugiere intensificar las tareas de mantenimiento de **${primaryRequest.singular}** y limpieza general preventivas justo antes de las **${supplyPeakHourStr}** y durante el pico de tránsito de **${peakRangeStr}** para asegurar la calidad de servicio.`
+      : `La sede se mantiene en parámetros estables de operación autónoma sin alertas pendientes.`;
+
+    return `Durante **${formattedPeriod}** ${hourRangeLabel}${restroomContext}, ${trafficText} En cuanto a la gestión operativa, ${requestText} ${recommendation}`;
+  }, [processedData, selectedDate, selectedMonth, selectedRestroomId, startHour, endHour, currentSede]);
 
   return (
-    <div className="space-y-6">
-      
-      {/* SELECTORES CORPORATIVOS MULTITENANT COMPLETO */}
-      <div className="bg-white p-4 rounded-3xl border border-gray-100 shadow-sm flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
-        <div className="flex flex-wrap gap-3 w-full lg:w-auto">
-          
-          {/* Selector de Cliente */}
-          <div className="flex items-center gap-2 bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 w-full sm:w-auto">
-            <Briefcase size={16} className="text-purple-700 shrink-0" />
-            <select 
-              value={selectedClientId} 
-              disabled={isSupervisor}
-              onChange={(e) => setSelectedClientId(Number(e.target.value))}
-              className="bg-transparent text-xs font-black text-slate-800 focus:outline-none cursor-pointer w-full"
-            >
-              {mockClients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          </div>
+    <div className="space-y-4">
 
-          {/* Selector de Ciudad */}
-          <div className="flex items-center gap-2 bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 w-full sm:w-auto">
-            <MapPin size={16} className="text-blue-600 shrink-0" />
-            <select 
-              value={selectedCityName} 
-              disabled={isSupervisor}
-              onChange={(e) => setSelectedCityName(e.target.value)}
-              className="bg-transparent text-xs font-black text-slate-800 focus:outline-none cursor-pointer w-full"
-            >
-              {currentClient.cities.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
-            </select>
+      {/* PANEL DE FILTROS AVANZADOS PREMIUM */}
+      <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+        <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 bg-[#830AD1]/10 rounded-lg text-[#830AD1]">
+              <Filter size={16} />
+            </div>
+            <div>
+              <h2 className="text-xs font-black text-slate-900 uppercase tracking-wider">Panel de Filtros Avanzados</h2>
+              <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-widest">Ajusta la analítica en tiempo real</p>
+            </div>
           </div>
-
-          {/* Selector de Sede */}
-          <div className="flex items-center gap-2 bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 w-full sm:w-auto">
-            <Building2 size={16} className="text-emerald-600 shrink-0" />
-            <select 
-              value={selectedSedeId} 
-              disabled={isSupervisor}
-              onChange={(e) => setSelectedSedeId(Number(e.target.value))}
-              className="bg-transparent text-xs font-black text-slate-800 focus:outline-none cursor-pointer w-full"
-            >
-              {currentCity.sedes.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
+          <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-full text-[9px] font-bold text-slate-500 uppercase tracking-widest">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            Monitoreo Activo
           </div>
         </div>
 
-        {/* Control del Rango de Tiempo */}
-        <div className="bg-slate-100 p-1 rounded-2xl flex gap-1 w-full lg:w-auto overflow-x-auto">
-          {(['hoy', 'ayer', 'semana_pasada', 'mes_pasado'] as TimeRange[]).map((range) => (
-            <button
-              key={range}
-              onClick={() => setTimeRange(range)}
-              className={`flex-1 lg:flex-none px-4 py-1.5 text-xs font-black rounded-xl transition-all capitalize whitespace-nowrap ${
-                timeRange === range ? 'bg-white text-purple-700 shadow-xs' : 'text-slate-500 hover:text-slate-900'
-              }`}
-            >
-              {range.replace('_', ' ')}
-            </button>
-          ))}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+          {/* 1. Selector de Cliente */}
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+              <Briefcase size={12} className="text-purple-700 shrink-0" /> Cliente
+            </label>
+            <div className="flex items-center bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 hover:border-purple-300 transition-all shadow-xs">
+              <select
+                value={selectedClientId}
+                disabled={isSupervisor}
+                onChange={(e) => setSelectedClientId(Number(e.target.value))}
+                className="bg-transparent text-xs font-black text-slate-800 focus:outline-none cursor-pointer w-full"
+              >
+                {mockClients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+          </div>
+
+          {/* 2. Selector de Ciudad */}
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+              <MapPin size={12} className="text-blue-600 shrink-0" /> Ciudad
+            </label>
+            <div className="flex items-center bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 hover:border-blue-300 transition-all shadow-xs">
+              <select
+                value={selectedCityName}
+                disabled={isSupervisor}
+                onChange={(e) => setSelectedCityName(e.target.value)}
+                className="bg-transparent text-xs font-black text-slate-800 focus:outline-none cursor-pointer w-full"
+              >
+                {currentClient.cities.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+              </select>
+            </div>
+          </div>
+
+          {/* 3. Selector de Sede / Terminal */}
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+              <Building2 size={12} className="text-emerald-600 shrink-0" /> Sede / Terminal
+            </label>
+            <div className="flex items-center bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 hover:border-emerald-300 transition-all shadow-xs">
+              <select
+                value={selectedSedeId}
+                disabled={isSupervisor}
+                onChange={(e) => setSelectedSedeId(Number(e.target.value))}
+                className="bg-transparent text-xs font-black text-slate-800 focus:outline-none cursor-pointer w-full"
+              >
+                {currentCity.sedes.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            </div>
+          </div>
+
+          {/* 4. Selector de Baño */}
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+              <Droplet size={12} className="text-[#830AD1] shrink-0" /> Baño / Servicio
+            </label>
+            <div className="flex items-center bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 hover:border-[#830AD1]/30 transition-all shadow-xs">
+              <select
+                value={selectedRestroomId}
+                onChange={(e) => setSelectedRestroomId(e.target.value)}
+                className="bg-transparent text-xs font-black text-slate-800 focus:outline-none cursor-pointer w-full"
+              >
+                <option value="all">Todos los baños ({currentSede?.restrooms?.length || 0})</option>
+                {currentSede?.restrooms?.map(r => (
+                  <option key={r.id} value={r.id}>{r.name} ({r.floor_name})</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Fila 2: Tiempo y Rango de Horas */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 pt-3 border-t border-slate-100">
+
+          {/* Periodo (Mes vs Día) */}
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+              <Calendar size={12} className="text-purple-700 shrink-0" /> Periodo Analítico
+            </label>
+            <div className="flex items-center bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 hover:border-purple-300 transition-all shadow-xs">
+              <select
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="bg-transparent text-xs font-black text-slate-800 focus:outline-none cursor-pointer w-full"
+              >
+                <option value="custom">Día Específico (Calendario)</option>
+                <option value="2026-05">Mes Completo: Mayo 2026</option>
+                <option value="2026-04">Mes Completo: Abril 2026</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Selector de Fecha (Solo visible si es Día Específico) */}
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+              <Calendar size={12} className="text-[#830AD1] shrink-0" /> {selectedMonth === 'custom' ? 'Seleccionar Fecha' : 'Fecha Inactiva'}
+            </label>
+            <div className={`flex items-center px-3 py-2 rounded-xl border transition-all shadow-xs ${selectedMonth === 'custom' ? 'bg-slate-50 border-slate-200 hover:border-[#830AD1]' : 'bg-slate-100 border-slate-200 opacity-60 pointer-events-none'}`}>
+              <input
+                type="date"
+                value={selectedDate}
+                max={getTodayStr()}
+                disabled={selectedMonth !== 'custom'}
+                onChange={(e) => e.target.value && setSelectedDate(e.target.value)}
+                className="bg-transparent text-xs font-black text-slate-800 focus:outline-none cursor-pointer w-full"
+              />
+            </div>
+          </div>
+
+          {/* Rango de Horas: Desde */}
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+              <Clock size={12} className="text-blue-500 shrink-0" /> Hora Inicio (Eje X)
+            </label>
+            <div className="flex items-center bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 hover:border-blue-300 transition-all shadow-xs">
+              <select
+                value={startHour}
+                onChange={(e) => handleStartHourChange(Number(e.target.value))}
+                className="bg-transparent text-xs font-black text-slate-800 focus:outline-none cursor-pointer w-full"
+              >
+                {Array.from({ length: 24 }).map((_, idx) => (
+                  <option key={`start-${idx}`} value={idx}>{String(idx).padStart(2, '0')}:00</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Rango de Horas: Hasta */}
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+              <Clock size={12} className="text-[#830AD1] shrink-0" /> Hora Fin (Eje X)
+            </label>
+            <div className="flex items-center bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 hover:border-[#830AD1]/30 transition-all shadow-xs">
+              <select
+                value={endHour}
+                onChange={(e) => handleEndHourChange(Number(e.target.value))}
+                className="bg-transparent text-xs font-black text-slate-800 focus:outline-none cursor-pointer w-full"
+              >
+                {Array.from({ length: 24 }).map((_, idx) => (
+                  <option key={`end-${idx}`} value={idx}>{String(idx).padStart(2, '0')}:00</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
         </div>
       </div>
 
@@ -231,182 +597,230 @@ export default function Dashboard({ user }: DashboardProps) {
         <h1 className="text-2xl md:text-3xl font-black text-slate-950 tracking-tight">{currentSede?.name}</h1>
       </div>
 
-      {/* RECUADROS KPI INTERACTIVOS */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <button 
-          onClick={() => setActiveMetricFilter('papel')}
-          className={`p-4 rounded-2xl border text-left transition-all ${
-            activeMetricFilter === 'papel' ? 'bg-purple-950 border-purple-900 text-white shadow-md' : 'bg-white border-gray-100 text-slate-800 hover:bg-slate-50'
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <StickyNote size={18} className={activeMetricFilter === 'papel' ? 'text-purple-300' : 'text-blue-500'} />
-            <span className="text-[9px] font-mono opacity-60">BOTÓN 1</span>
-          </div>
-          <p className="text-2xl font-black mt-2">{processedData.buttonTotals.papel}</p>
-          <p className="text-[11px] font-semibold opacity-70">Peticiones de Papel</p>
-        </button>
-
-        <button 
-          onClick={() => setActiveMetricFilter('jabon')}
-          className={`p-4 rounded-2xl border text-left transition-all ${
-            activeMetricFilter === 'jabon' ? 'bg-purple-950 border-purple-900 text-white shadow-md' : 'bg-white border-gray-100 text-slate-800 hover:bg-slate-50'
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <Droplet size={18} className={activeMetricFilter === 'jabon' ? 'text-purple-300' : 'text-purple-600'} />
-            <span className="text-[9px] font-mono opacity-60">BOTÓN 2</span>
-          </div>
-          <p className="text-2xl font-black mt-2">{processedData.buttonTotals.jabon}</p>
-          <p className="text-[11px] font-semibold opacity-70">Falta de Jabón</p>
-        </button>
-
-        <button 
-          onClick={() => setActiveMetricFilter('aseo')}
-          className={`p-4 rounded-2xl border text-left transition-all ${
-            activeMetricFilter === 'aseo' ? 'bg-purple-950 border-purple-900 text-white shadow-md' : 'bg-white border-gray-100 text-slate-800 hover:bg-slate-50'
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <Sparkles size={18} className={activeMetricFilter === 'aseo' ? 'text-purple-300' : 'text-amber-500'} />
-            <span className="text-[9px] font-mono opacity-60">BOTÓN 3</span>
-          </div>
-          <p className="text-2xl font-black mt-2">{processedData.buttonTotals.aseo}</p>
-          <p className="text-[11px] font-semibold opacity-70">Aviso Limpieza</p>
-        </button>
-
-        <button 
-          onClick={() => setActiveMetricFilter('agua')}
-          className={`p-4 rounded-2xl border text-left transition-all ${
-            activeMetricFilter === 'agua' ? 'bg-purple-950 border-purple-900 text-white shadow-md' : 'bg-white border-gray-100 text-slate-800 hover:bg-slate-50'
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <Wind size={18} className={activeMetricFilter === 'agua' ? 'text-purple-300' : 'text-cyan-500'} />
-            <span className="text-[9px] font-mono opacity-60">BOTÓN 4</span>
-          </div>
-          <p className="text-2xl font-black mt-2">{processedData.buttonTotals.agua}</p>
-          <p className="text-[11px] font-semibold opacity-70">Flujo / Olores</p>
-        </button>
-      </div>
-
-      {/* AMBAS GRÁFICAS COMPLETA MENTE FUNCIONALES */}
+      {/* GRÁFICAS — Grid 2x2 en desktop, apiladas en móvil */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        
+
         {/* Gráfica 1: Fluctuación Temporal de Clics */}
-        <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm space-y-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <h3 className="text-xs font-black text-slate-900 uppercase tracking-tight">Fluctuación de Pulsaciones</h3>
-              <p className="text-[11px] text-gray-400 font-medium">Intervalo horario basado en el filtro de rango seleccionado</p>
-            </div>
-            <span className="text-[9px] bg-purple-100 text-purple-800 px-2 py-0.5 rounded font-black uppercase">
-              Métrica: {activeMetricFilter}
-            </span>
-          </div>
-          <div className="h-48 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={processedData.chartData} margin={{ top: 10, right: 10, left: -30, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="label" stroke="#94a3b8" fontSize={10} tickLine={false} />
-                <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} allowDecimals={false} />
-                <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '8px', fontSize: '11px' }} />
-                <Bar dataKey={activeMetricFilter} fill="#830AD1" radius={[4, 4, 0, 0]} maxBarSize={24} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Gráfica 2: Conteo de Tránsito Peatonal */}
-        <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm space-y-4">
+        <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm space-y-3">
           <div>
-            <h3 className="text-xs font-black text-slate-900 uppercase tracking-tight">Tránsito Peatonal Acumulado</h3>
-            <p className="text-[11px] text-gray-400 font-medium">Registros capturados por sensores de paso: <strong className="text-slate-800">{processedData.totalVisits} pax</strong></p>
+            <h3 className="text-xs font-black text-slate-900 uppercase tracking-tight">Pulsaciones por Botón / Hora</h3>
+            <p className="text-[11px] text-gray-400 font-medium">Peticiones de los 4 sensores por hora — {selectedDate}</p>
           </div>
-          <div className="h-48 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={processedData.chartData} margin={{ top: 10, right: 10, left: -30, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="label" stroke="#94a3b8" fontSize={10} tickLine={false} />
-                <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} allowDecimals={false} />
-                <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '8px', fontSize: '11px' }} />
-                <Bar dataKey="visitas" fill="#0EA5E9" radius={[4, 4, 0, 0]} maxBarSize={24} />
-              </BarChart>
-            </ResponsiveContainer>
+          <div className="relative">
+            <div className="pointer-events-none absolute right-0 top-0 h-full w-12 z-10 bg-gradient-to-l from-white to-transparent rounded-r-xl" />
+            <div
+              ref={barChartContainerRef}
+              className="w-full overflow-x-auto scroll-smooth"
+              style={{ scrollbarWidth: 'thin', scrollbarColor: '#830AD1 #f1f5f9' }}
+            >
+              <div className="h-64 min-w-[1800px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={processedData.chartData}
+                    margin={{ top: 10, right: 16, left: 0, bottom: 0 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis dataKey="label" stroke="#94a3b8" fontSize={8} tickLine={false} />
+                    <YAxis stroke="#94a3b8" fontSize={9} tickLine={false} allowDecimals={false} width={28} />
+                    <Tooltip
+                      cursor={{ fill: '#f5f3ff' }}
+                      contentStyle={{ borderRadius: '12px', fontSize: '11px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                    />
+                    <Legend iconType="circle" wrapperStyle={{ fontSize: '10px', marginTop: '5px' }} />
+                    <Bar dataKey="papel" name="Papel" fill="#3B82F6" radius={[4, 4, 0, 0]} maxBarSize={12} />
+                    <Bar dataKey="jabon" name="Jabón" fill="#A855F7" radius={[4, 4, 0, 0]} maxBarSize={12} />
+                    <Bar dataKey="aseo" name="Aseo" fill="#F59E0B" radius={[4, 4, 0, 0]} maxBarSize={12} />
+                    <Bar dataKey="agua" name="Olores/Agua" fill="#06B6D4" radius={[4, 4, 0, 0]} maxBarSize={12} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
           </div>
         </div>
 
-      </div>
+        {/* Gráfica 2: Ola de Tránsito Peatonal */}
+        <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm space-y-3">
+          <div>
+            <h3 className="text-xs font-black text-slate-900 uppercase tracking-tight">Ola de Tránsito Peatonal</h3>
+            <p className="text-[11px] text-gray-400 font-medium">Afluencia por sensor de paso en la ventana activa: <strong className="text-slate-800">{processedData.totalVisits} pax</strong></p>
+          </div>
+          <div className="relative">
+            <div className="pointer-events-none absolute right-0 top-0 h-full w-12 z-10 bg-gradient-to-l from-white to-transparent rounded-r-xl" />
+            <div
+              ref={areaChartContainerRef}
+              className="w-full overflow-x-auto scroll-smooth"
+              style={{ scrollbarWidth: 'thin', scrollbarColor: '#0EA5E9 #f1f5f9' }}
+            >
+              <div className="h-64 min-w-[1800px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={processedData.chartData} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorVisitas" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#0EA5E9" stopOpacity={0.35} />
+                        <stop offset="95%" stopColor="#0EA5E9" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis dataKey="label" stroke="#94a3b8" fontSize={8} tickLine={false} />
+                    <YAxis stroke="#94a3b8" fontSize={9} tickLine={false} allowDecimals={false} width={28} />
+                    <Tooltip contentStyle={{ borderRadius: '12px', fontSize: '11px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                    <Area type="monotone" dataKey="visitas" name="Personas" stroke="#0EA5E9" strokeWidth={2.5} fillOpacity={1} fill="url(#colorVisitas)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+        </div>
 
-      {/* DETALLE DESPLEGABLE POR NIVELES / PISOS */}
-      <div className="space-y-3">
-        {Object.entries(restroomsByFloor).map(([floorName, restrooms]) => {
-          const isOpen = !!openFloors[floorName];
+        {/* Gráfica 3: Torta — Distribución de botones presionados */}
+        {(() => {
+          const { buttonTotals } = processedData;
+          const totalClicks = buttonTotals.papel + buttonTotals.jabon + buttonTotals.aseo + buttonTotals.agua;
+          const pieData = [
+            { name: 'Papel', value: buttonTotals.papel, color: '#3B82F6' },
+            { name: 'Jabón', value: buttonTotals.jabon, color: '#A855F7' },
+            { name: 'Aseo', value: buttonTotals.aseo, color: '#F59E0B' },
+            { name: 'Olores/Agua', value: buttonTotals.agua, color: '#06B6D4' },
+          ].filter(d => d.value > 0);
+
+          const renderCustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }: any) => {
+            const RADIAN = Math.PI / 180;
+            const radius = innerRadius + (outerRadius - innerRadius) * 0.55;
+            const x = cx + radius * Math.cos(-midAngle * RADIAN);
+            const y = cy + radius * Math.sin(-midAngle * RADIAN);
+            if (percent < 0.06) return null;
+            return (
+              <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" fontSize={9} fontWeight={900}>
+                {`${(percent * 100).toFixed(0)}%`}
+              </text>
+            );
+          };
+
           return (
-            <div key={floorName} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-              <button 
-                onClick={() => setOpenFloors(prev => ({ ...prev, [floorName]: !prev[floorName] }))}
-                className="w-full flex items-center justify-between p-4 bg-slate-50/60 hover:bg-slate-50 transition-colors"
-              >
-                <span className="text-xs font-black text-purple-900 uppercase tracking-wider flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#830AD1]" />
-                  {floorName}
-                </span>
-                {isOpen ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
-              </button>
-
-              {isOpen && (
-                <div className="p-4 space-y-4 divide-y divide-gray-100">
-                  {restrooms.map((r, idx) => {
-                    const alertActive = r.active_alerts.length > 0;
-                    return (
-                      <div key={r.id} className={`space-y-3 ${idx > 0 ? 'pt-4' : ''}`}>
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h4 className="font-bold text-slate-900 text-xs">{r.name}</h4>
-                            <p className="text-[9px] font-mono text-gray-400">Tránsito peatonal mapeado: {r.computed_visits} personas</p>
-                          </div>
-                          {timeRange === 'hoy' && alertActive && (
-                            <span className="text-[9px] bg-red-50 text-red-700 px-2 py-0.5 rounded-full font-black animate-pulse uppercase">
-                              ALERTA: {r.active_alerts[0]}
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="grid grid-cols-4 gap-2 text-center">
-                          <div className={`p-2 rounded-xl border ${activeMetricFilter === 'papel' ? 'bg-purple-50 border-purple-200' : 'bg-slate-50/60 border-slate-100'}`}>
-                            <p className="text-xs font-black text-slate-800">{r.computed_clicks.papel}</p>
-                            <span className="text-[8px] text-gray-400 block font-bold">Papel</span>
-                          </div>
-                          <div className={`p-2 rounded-xl border ${activeMetricFilter === 'jabon' ? 'bg-purple-50 border-purple-200' : 'bg-slate-50/60 border-slate-100'}`}>
-                            <p className="text-xs font-black text-slate-800">{r.computed_clicks.jabon}</p>
-                            <span className="text-[8px] text-gray-400 block font-bold">Jabón</span>
-                          </div>
-                          <div className={`p-2 rounded-xl border ${activeMetricFilter === 'aseo' ? 'bg-purple-50 border-purple-200' : 'bg-slate-50/60 border-slate-100'}`}>
-                            <p className="text-xs font-black text-slate-800">{r.computed_clicks.aseo}</p>
-                            <span className="text-[8px] text-gray-400 block font-bold">Aseo</span>
-                          </div>
-                          <div className={`p-2 rounded-xl border ${activeMetricFilter === 'agua' ? 'bg-purple-50 border-purple-200' : 'bg-slate-50/60 border-slate-100'}`}>
-                            <p className="text-xs font-black text-slate-800">{r.computed_clicks.agua}</p>
-                            <span className="text-[8px] text-gray-400 block font-bold">Olores</span>
-                          </div>
-                        </div>
-
-                        {timeRange === 'hoy' && alertActive && isSupervisor && (
-                          <div className="bg-amber-50 border border-amber-200 p-2.5 rounded-xl flex items-center gap-2 text-[10px] text-amber-900 font-medium">
-                            <Radio size={14} className="text-amber-600 shrink-0" />
-                            <span><strong>Instrucción inmediata:</strong> Notificar cuadrilla de limpieza para solucionar alerta de <strong>{r.active_alerts[0]}</strong>.</span>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
+            <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm space-y-3">
+              <div>
+                <h3 className="text-xs font-black text-slate-900 uppercase tracking-tight">Distribución de Botones Presionados</h3>
+                <p className="text-[11px] text-gray-400 font-medium">¿Cuál botón presionan más los usuarios? — Total: <strong className="text-slate-800">{totalClicks} pulsaciones</strong></p>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="h-52 flex-1">
+                  {totalClicks > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={pieData}
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={88}
+                          innerRadius={36}
+                          paddingAngle={3}
+                          dataKey="value"
+                          labelLine={false}
+                          label={renderCustomLabel}
+                        >
+                          {pieData.map((entry, idx) => (
+                            <Cell key={`cell-${idx}`} fill={entry.color} stroke="none" />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          formatter={(value: any, name: any) => [value, name]}
+                          contentStyle={{ borderRadius: '12px', fontSize: '11px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-full flex items-center justify-center text-gray-400 text-xs font-bold">Sin pulsaciones en este turno</div>
+                  )}
                 </div>
-              )}
+                {/* Leyenda lateral premium */}
+                <div className="space-y-2.5 shrink-0">
+                  {[
+                    { label: 'Papel', value: buttonTotals.papel, color: '#3B82F6' },
+                    { label: 'Jabón', value: buttonTotals.jabon, color: '#A855F7' },
+                    { label: 'Aseo', value: buttonTotals.aseo, color: '#F59E0B' },
+                    { label: 'Olores/Agua', value: buttonTotals.agua, color: '#06B6D4' },
+                  ].map(item => (
+                    <div key={item.label} className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                      <div>
+                        <p className="text-[10px] font-bold text-slate-800">{item.label}</p>
+                        <p className="text-[9px] font-mono text-gray-400">{item.value} puls. {totalClicks > 0 ? `(${((item.value / totalClicks) * 100).toFixed(0)}%)` : ''}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           );
-        })}
+        })()}
+
+        {/* Gráfica 4: Comparativa Combinada — Personas vs. Pulsaciones por Hora */}
+        <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm space-y-3">
+          <div>
+            <h3 className="text-xs font-black text-slate-900 uppercase tracking-tight">Personas vs. Pulsaciones por Hora</h3>
+            <p className="text-[11px] text-gray-400 font-medium">Comparativa entre afluencia de personas y llamados a botones — eje dual</p>
+          </div>
+          <div className="relative">
+            <div className="pointer-events-none absolute right-0 top-0 h-full w-12 z-10 bg-gradient-to-l from-white to-transparent rounded-r-xl" />
+            <div
+              className="w-full overflow-x-auto scroll-smooth"
+              style={{ scrollbarWidth: 'thin', scrollbarColor: '#830AD1 #f1f5f9' }}
+            >
+              <div className="h-64 min-w-[1800px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart
+                    data={processedData.chartData.map(d => ({
+                      ...d,
+                      totalClicks: (d.papel || 0) + (d.jabon || 0) + (d.aseo || 0) + (d.agua || 0)
+                    }))}
+                    margin={{ top: 10, right: 36, left: 0, bottom: 0 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis dataKey="label" stroke="#94a3b8" fontSize={8} tickLine={false} />
+                    <YAxis yAxisId="left" stroke="#0EA5E9" fontSize={9} tickLine={false} allowDecimals={false} width={28} />
+                    <YAxis yAxisId="right" orientation="right" stroke="#830AD1" fontSize={9} tickLine={false} allowDecimals={false} width={28} />
+                    <Tooltip
+                      cursor={{ fill: '#f5f3ff' }}
+                      contentStyle={{ borderRadius: '12px', fontSize: '11px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                      formatter={(value: any, name: any) => [value, name === 'visitas' ? 'Personas' : 'Pulsaciones']}
+                    />
+                    <Legend iconType="circle" wrapperStyle={{ fontSize: '10px', marginTop: '5px' }} />
+                    <Bar yAxisId="left" dataKey="visitas" name="Personas" fill="#0EA5E9" fillOpacity={0.25} radius={[4, 4, 0, 0]} maxBarSize={14} />
+                    <Line yAxisId="right" type="monotone" dataKey="totalClicks" name="Pulsaciones" stroke="#830AD1" strokeWidth={2.5} dot={false} activeDot={{ r: 5, fill: '#830AD1' }} />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
+
+      {/* CARD DE INSIGHT DE LENGUAJE NATURAL */}
+      <div className="bg-gradient-to-br from-[#830AD1]/5 via-[#830AD1]/[0.02] to-white border border-[#830AD1]/15 p-5 rounded-2xl shadow-xs transition-all hover:shadow-sm space-y-3">
+        <div className="flex items-center gap-2.5">
+          <div className="p-2 bg-[#830AD1]/10 rounded-xl text-[#830AD1]">
+            <Sparkles size={18} className="animate-pulse" />
+          </div>
+          <div>
+            <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
+              Resumen Inteligente y Recomendación Operativa
+            </h3>
+            <p className="text-[10px] text-gray-400 font-medium uppercase tracking-widest">
+              Análisis descriptivo del día
+            </p>
+          </div>
+        </div>
+
+        <p
+          className="text-xs text-slate-700 leading-relaxed font-medium"
+          dangerouslySetInnerHTML={{
+            __html: dailySummaryNarrative
+              .replace(/\*\*(.*?)\*\*/g, '<strong class="text-slate-900 font-black">$1</strong>')
+          }}
+        />
+      </div>
+
 
     </div>
   );

@@ -1,29 +1,26 @@
 import { useState } from 'react';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { Smartphone, ShieldCheck, Zap } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
-interface LoginProps {
-  onLoginSuccess: (user: { name: string; role: 'GERENTE_GLOBAL' | 'SUPERVISOR_SEDE'; assignedSedeId?: number }) => void;
-}
-
-export default function Login({ onLoginSuccess }: LoginProps) {
+export default function Login() {
+  const { user, login } = useAuth();
+  const navigate = useNavigate();
   const [email, setEmail] = useState('gerente@sodexo.com');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<'GERENTE_GLOBAL' | 'SUPERVISOR_SEDE'>('GERENTE_GLOBAL');
 
+  // Si ya está autenticado, redirigir al dashboard
+  if (user) return <Navigate to="/dashboard" replace />;
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (role === 'GERENTE_GLOBAL') {
-      onLoginSuccess({ 
-        name: 'Carlos Mendoza', 
-        role: 'GERENTE_GLOBAL' 
-      });
+      login({ name: 'Carlos Mendoza', role: 'GERENTE_GLOBAL' });
     } else {
-      onLoginSuccess({ 
-        name: 'Sonia Restrepo', 
-        role: 'SUPERVISOR_SEDE',
-        assignedSedeId: 101 // Asignada a Bancolombia Sede Centro automáticamente
-      });
+      login({ name: 'Sonia Restrepo', role: 'SUPERVISOR_SEDE', assignedSedeId: 101 });
     }
+    navigate('/dashboard', { replace: true });
   };
 
   return (
@@ -39,11 +36,11 @@ export default function Login({ onLoginSuccess }: LoginProps) {
                 Nu
               </div>
               <span className="text-xl font-black tracking-tight text-slate-900">
-                sodexo<span className="text-[#830AD1] font-light">.io</span>
+                nubeware<span className="text-[#830AD1] font-light">.ai</span>
               </span>
             </div>
-            <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-1 rounded-md font-mono font-medium">
-              by nubeware.ai
+            <span className="text-[10px] bg-purple-50 text-[#830AD1] px-2 py-1 rounded-md font-mono font-black uppercase tracking-wider">
+              IoT Platform
             </span>
           </div>
 

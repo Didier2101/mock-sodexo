@@ -25,15 +25,15 @@ export default function Login() {
 
   return (
     <div className="min-h-screen w-full flex bg-white font-sans text-slate-900 selection:bg-purple-200">
-      
+
       <div className="w-full lg:w-[45%] flex flex-col justify-center px-6 sm:px-12 lg:px-16 py-12">
         <div className="max-w-md w-full mx-auto space-y-8">
-          
+
           {/* Propietario Nubeware.ai - Cliente Principal Sodexo */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-xl bg-[#830AD1] flex items-center justify-center text-white font-black text-sm shadow-md shadow-purple-200">
-                Nu
+                .AI
               </div>
               <span className="text-xl font-black tracking-tight text-slate-900">
                 nubeware<span className="text-[#830AD1] font-light">.ai</span>
@@ -55,7 +55,7 @@ export default function Login() {
 
           <form className="space-y-5" onSubmit={handleSubmit}>
             <div className="space-y-4">
-              
+
               <div>
                 <label className="text-[11px] text-gray-400 font-bold uppercase tracking-wider block mb-1">
                   Usuario Institucional
@@ -101,7 +101,7 @@ export default function Login() {
                   </select>
                   <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-400">
                     <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                      <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/>
+                      <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
                     </svg>
                   </div>
                 </div>
@@ -129,7 +129,7 @@ export default function Login() {
       {/* COLUMNA DERECHA: SECCIÓN EXPLICATIVA */}
       <div className="hidden lg:flex flex-1 bg-gradient-to-br from-purple-950 via-[#1c0036] to-black p-16 items-center justify-center relative overflow-hidden">
         <div className="absolute top-[-20%] right-[-20%] w-[600px] h-[600px] rounded-full bg-[#830AD1]/15 blur-[120px]" />
-        
+
         <div className="max-w-xl w-full space-y-10 relative z-10">
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-white/10 text-purple-300 backdrop-blur-md">
             <Zap size={12} className="fill-current" />

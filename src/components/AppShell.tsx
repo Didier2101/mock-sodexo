@@ -55,7 +55,7 @@ export default function AppShell() {
 
           {/* Logo Corporativo */}
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-[#830AD1] flex items-center justify-center text-white font-black text-xs shadow-sm">Nu</div>
+            <div className="w-7 h-7 rounded-lg bg-[#830AD1] flex items-center justify-center text-white font-black text-xs shadow-sm">.AI</div>
             <h1 className="text-base font-black tracking-tight text-slate-900 hidden xs:inline-block">
               nubeware<span className="text-[#830AD1] font-light">.ai</span>
             </h1>
@@ -141,7 +141,7 @@ export default function AppShell() {
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-lg bg-[#830AD1] flex items-center justify-center text-white font-black text-xs">Nu</div>
+                  <div className="w-6 h-6 rounded-lg bg-[#830AD1] flex items-center justify-center text-white font-black text-xs">.Ai</div>
                   <h1 className="text-sm font-black tracking-tight text-slate-900">nubeware<span className="text-[#830AD1] font-light">.ai</span></h1>
                 </div>
                 <button
@@ -159,9 +159,8 @@ export default function AppShell() {
                     navigate('/dashboard');
                     setIsDrawerOpen(false);
                   }}
-                  className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                    currentView === 'dashboard' ? 'bg-purple-50 text-purple-700' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
-                  }`}
+                  className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${currentView === 'dashboard' ? 'bg-purple-50 text-purple-700' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+                    }`}
                 >
                   <LayoutDashboard size={15} />
                   <span>Monitoreo IoT</span>
@@ -172,9 +171,8 @@ export default function AppShell() {
                     navigate('/alerts');
                     setIsDrawerOpen(false);
                   }}
-                  className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                    currentView === 'alerts' ? 'bg-purple-50 text-purple-700' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
-                  }`}
+                  className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${currentView === 'alerts' ? 'bg-purple-50 text-purple-700' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+                    }`}
                 >
                   <Bell size={15} />
                   <span>Central de Alertas</span>
@@ -240,7 +238,7 @@ export default function AppShell() {
               <p className="text-[11px] text-slate-500 font-medium">
                 Panel maestro de clientes con telemetría integrada y sensores físicos asignados por Sodexo en la cuenta activa.
               </p>
-              
+
               <div className="space-y-2.5">
                 {mockClientsList.map(c => (
                   <div key={c.id} className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
@@ -314,9 +312,8 @@ export default function AppShell() {
                       <p className="text-[10px] text-gray-400 font-semibold mt-0.5">{u.email} — Cobertura: {u.scope}</p>
                     </div>
                     <div className="flex items-center gap-2.5">
-                      <span className={`text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
-                        u.status === 'Activo' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-gray-400'
-                      }`}>
+                      <span className={`text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider ${u.status === 'Activo' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-gray-400'
+                        }`}>
                         {u.status}
                       </span>
                     </div>

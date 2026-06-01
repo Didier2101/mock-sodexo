@@ -36,7 +36,7 @@ export interface ClientAccount {
 
 // Helper para simular marcas de tiempo consistentes
 export const getSimulatedTime = (daysAgo: number, hour: number, minute: number = 20): string => {
-  const d = new Date();
+  const d = new Date('2026-06-30T12:00:00');
   d.setDate(d.getDate() - daysAgo);
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -88,12 +88,12 @@ const generateClicks = (daysAgo: number, count: number): BotonImpulso[] => {
   return list.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 };
 
-// Generador de baños con volumen controlado por escala poblando TODOS los días (0 a 30)
+// Generador de baños con volumen controlado por escala poblando TODOS los días (0 a 60)
 const generateRestroomData = (id: number, name: string, type: string, floor_name: string, active_alerts: string[], scale: number = 1.0) => {
   const visitas_historicas: VisitaRegistro[] = [];
   const clicks_historicos: BotonImpulso[] = [];
 
-  for (let d = 0; d <= 30; d++) {
+  for (let d = 0; d <= 60; d++) {
     let countVisits = 0;
     let countClicks = 0;
 

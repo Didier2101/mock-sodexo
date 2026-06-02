@@ -18,7 +18,7 @@ export default function Login() {
     if (role === 'GERENTE_GLOBAL') {
       login({ name: 'Carlos Mendoza', role: 'GERENTE_GLOBAL' });
     } else {
-      login({ name: 'Sonia Restrepo', role: 'SUPERVISOR_SEDE', assignedSedeId: 101 });
+      login({ name: 'Sonia Restrepo', role: 'SUPERVISOR_SEDE', assignedSedeId: 201 });
     }
     navigate('/dashboard', { replace: true });
   };
@@ -141,7 +141,7 @@ export default function Login() {
               Controla las cuentas de tus clientes mediante <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">Alertas IoT</span>.
             </h3>
             <p className="text-base text-purple-200/70 font-medium">
-              Supervisa contratos clave como Bancolombia u Opain. Detecta anomalías críticas en tiempo real y despacha personal de limpieza en segundos vía radiofrecuencia.
+              Supervisa el contrato clave Bancolombia. Detecta anomalías críticas en tiempo real y despacha personal de limpieza en segundos vía radiofrecuencia.
             </p>
           </div>
 

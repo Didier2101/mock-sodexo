@@ -6,7 +6,7 @@ export interface DatoPorSede {
   papel: number;
   jabon: number;
   aseo: number;
-  agua: number;
+  olor: number;
   visitas: number;
 }
 

@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { mockClients, type CityData, type LocationSede } from '../data';
 import { useAuth } from '../context/AuthContext';
 import { useFilter } from '../context/FilterContext';
+import { BrainCircuit, Building2, MapPin } from 'lucide-react';
 
 import PanelFiltros from '../components/PanelFiltros';
 import GraficaComparativaSedes from '../components/GraficaComparativaSedes';
@@ -34,11 +35,11 @@ const obtenerVentana12Horas = (fechaBase: string, horaFin: number) => {
   for (let i = 11; i >= 0; i--) {
     const fecha = new Date(`${fechaBase}T${String(horaFin).padStart(2, '0')}:00:00`);
     fecha.setHours(fecha.getHours() - i);
-    const year  = fecha.getFullYear();
+    const year = fecha.getFullYear();
     const month = String(fecha.getMonth() + 1).padStart(2, '0');
-    const day   = String(fecha.getDate()).padStart(2, '0');
+    const day = String(fecha.getDate()).padStart(2, '0');
     const dateStr = `${year}-${month}-${day}`;
-    const hour    = fecha.getHours();
+    const hour = fecha.getHours();
     const hourKey = String(hour).padStart(2, '0');
     slots.push({ dateStr, hour, label: `${hourKey}:00`, hourKey });
   }
@@ -53,14 +54,14 @@ export default function Dashboard() {
   const esSupervisor = user.role === 'SUPERVISOR_SEDE';
 
   // ── Estado de filtros en cascada ──────────────────────────────────────────
-  const [clienteId, setClienteId]     = useState<number>(1);
+  const [clienteId, setClienteId] = useState<number>(2);
   const [ciudadNombre, setCiudadNombre] = useState<string>('Bogotá');
-  const [sedeId, setSedeId]           = useState<number>(101);
+  const [sedeId, setSedeId] = useState<number>(201);
 
   const { selectedDate: fechaSeleccionada, setSelectedDate: setFechaSeleccionada, selectedHour: horaSeleccionada } = useFilter();
 
-  const [mes, setMes]               = useState<string>('custom');
-  const [banoId, setBanoId]         = useState<string>('all');
+  const [mes, setMes] = useState<string>('custom');
+  const [banoId, setBanoId] = useState<string>('all');
   const horaInicio = 0;
   const horaFin = 23;
 
@@ -116,19 +117,19 @@ export default function Dashboard() {
   }, [sedeActual]);
 
   // ── Ventana de 12 horas activa ────────────────────────────────────────────
-  const ventanaSlots   = useMemo(() => obtenerVentana12Horas(fechaSeleccionada, horaSeleccionada), [fechaSeleccionada, horaSeleccionada]);
+  const ventanaSlots = useMemo(() => obtenerVentana12Horas(fechaSeleccionada, horaSeleccionada), [fechaSeleccionada, horaSeleccionada]);
   const ventanaPrefijos = useMemo(() => ventanaSlots.map(s => `${s.dateStr}T${s.hourKey}`), [ventanaSlots]);
 
   // ── Pipeline analítico para el insight de lenguaje natural ───────────────
   const datosAnalíticos = useMemo(() => {
     let totalVisitas = 0;
-    const totales = { papel: 0, jabon: 0, aseo: 0, agua: 0 };
+    const totales = { papel: 0, jabon: 0, aseo: 0, olor: 0 };
     const mapaHoras: Record<string, any> = {};
     const datosPorHora: any[] = [];
 
     for (let h = 0; h < 24; h++) {
       const key = String(h).padStart(2, '0');
-      const slot = { label: `${key}:00`, papel: 0, jabon: 0, aseo: 0, agua: 0, visitas: 0, hourKey: key };
+      const slot = { label: `${key}:00`, papel: 0, jabon: 0, aseo: 0, olor: 0, visitas: 0, hourKey: key };
       datosPorHora.push(slot);
       mapaHoras[key] = slot;
     }
@@ -183,7 +184,7 @@ export default function Dashboard() {
         }
         return c.timestamp.startsWith(mes) && h >= horaInicio && h <= horaFin;
       });
-      const clicsLocales = { papel: 0, jabon: 0, aseo: 0, agua: 0 };
+      const clicsLocales = { papel: 0, jabon: 0, aseo: 0, olor: 0, };
       clicks.forEach(c => { clicsLocales[c.type]++; });
       return { ...r, computed_visits: visitas.length, computed_clicks: clicsLocales };
     });
@@ -194,7 +195,7 @@ export default function Dashboard() {
   // ── Datos para GraficaComparativaSedes ───────────────────────────────────
   const datosPorSede = useMemo((): DatoPorSede[] => {
     return ciudadActual.sedes.map(sede => {
-      let papel = 0, jabon = 0, aseo = 0, agua = 0, visitas = 0;
+      let papel = 0, jabon = 0, aseo = 0, olor = 0, visitas = 0;
 
       sede.restrooms.forEach(r => {
         r.clicks_historicos.forEach(c => {
@@ -205,7 +206,7 @@ export default function Dashboard() {
               if (c.type === 'papel') papel++;
               else if (c.type === 'jabon') jabon++;
               else if (c.type === 'aseo') aseo++;
-              else if (c.type === 'agua') agua++;
+              else if (c.type === 'olor') olor++;
             }
           }
         });
@@ -223,7 +224,7 @@ export default function Dashboard() {
       return {
         name: nombreCorto.length > 20 ? nombreCorto.substring(0, 18) + '…' : nombreCorto,
         fullName: sede.name,
-        papel, jabon, aseo, agua, visitas,
+        papel, jabon, aseo, olor, visitas,
       };
     });
   }, [ciudadActual, fechaSeleccionada, mes, horaInicio, horaFin]);
@@ -236,15 +237,15 @@ export default function Dashboard() {
     for (let diasAtras = 29; diasAtras >= 0; diasAtras--) {
       const d = new Date(hoy);
       d.setDate(d.getDate() - diasAtras);
-      const year  = d.getFullYear();
+      const year = d.getFullYear();
       const month = String(d.getMonth() + 1).padStart(2, '0');
-      const day   = String(d.getDate()).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
       const dateStr = `${year}-${month}-${day}`;
 
       let visitas = 0, pulsaciones = 0;
       ciudadActual.sedes.forEach(sede => {
         sede.restrooms.forEach(r => {
-          visitas     += r.visitas_historicas.filter(v => v.timestamp.startsWith(dateStr)).length;
+          visitas += r.visitas_historicas.filter(v => v.timestamp.startsWith(dateStr)).length;
           pulsaciones += r.clicks_historicos.filter(c => c.timestamp.startsWith(dateStr)).length;
         });
       });
@@ -267,16 +268,17 @@ export default function Dashboard() {
     });
 
     const picoInicio = Math.max(0, horaMaxVisitas - 1);
-    const picofin   = Math.min(23, horaMaxVisitas + 1);
-    const rangoPico = `${String(picoInicio).padStart(2,'0')}:00 y las ${String(picofin).padStart(2,'0')}:00`;
-    const horaPico  = `${String(horaMaxVisitas).padStart(2,'0')}:00`;
+    const picofin = Math.min(23, horaMaxVisitas + 1);
+    const rangoPico = `${String(picoInicio).padStart(2, '0')}:00 y las ${String(picofin).padStart(2, '0')}:00`;
+    const horaPico = `${String(horaMaxVisitas).padStart(2, '0')}:00`;
 
     let maxClic = -1, horaMaxClic = 12;
     const insumos = [
       { key: 'papel', label: 'peticiones de papel higiénico', singular: 'papel higiénico', count: totalesBotones.papel },
-      { key: 'jabon', label: 'falta de jabón',                singular: 'jabón',           count: totalesBotones.jabon },
-      { key: 'aseo',  label: 'alertas de aseo/limpieza',      singular: 'limpieza',        count: totalesBotones.aseo  },
-      { key: 'agua',  label: 'reportes de olores o flujo',    singular: 'olores/agua',     count: totalesBotones.agua  },
+      { key: 'jabon', label: 'falta de jabón', singular: 'jabón', count: totalesBotones.jabon },
+      { key: 'aseo', label: 'alertas de aseo/limpieza', singular: 'limpieza', count: totalesBotones.aseo },
+      { key: 'olor', label: 'reportes de olores o flujo', singular: 'olores/olor', count: totalesBotones.olor },
+      { key: 'olor', label: 'reportes de fuga de olor', singular: 'fuga de olor', count: totalesBotones.olor },
     ];
     insumos.sort((a, b) => b.count - a.count);
     const insumoTop = insumos[0];
@@ -285,7 +287,7 @@ export default function Dashboard() {
       const val = d[insumoTop.key] || 0;
       if (val > maxClic) { maxClic = val; horaMaxClic = parseInt(d.hourKey, 10); }
     });
-    const horaPicoInsumo = `${String(horaMaxClic).padStart(2,'0')}:00`;
+    const horaPicoInsumo = `${String(horaMaxClic).padStart(2, '0')}:00`;
 
     let nombreBanoTop = '', visitasBanoTop = -1;
     const banosFiltrados = (sedeActual?.restrooms ?? [])
@@ -350,9 +352,23 @@ export default function Dashboard() {
       />
 
       {/* Header dinámico */}
-      <div className="space-y-1">
-        <p className="text-xs font-black text-[#830AD1] uppercase tracking-widest">Inteligencia de Datos Sodexo</p>
-        <h1 className="text-2xl md:text-3xl font-black text-slate-950 tracking-tight">{sedeActual?.name}</h1>
+      <div className="flex items-start justify-between">
+        <div className="space-y-1">
+          <p className="text-xs font-black text-[#830AD1] uppercase tracking-widest flex items-center gap-1.5">
+            <BrainCircuit size={12} className="text-[#830AD1]" />
+            Inteligencia de Datos Sodexo
+          </p>
+          <h1 className="text-2xl md:text-3xl font-black text-slate-950 tracking-tight flex items-center gap-2">
+            <Building2 size={22} className="text-slate-400 shrink-0" />
+            {sedeActual?.name}
+          </h1>
+          {ciudadActual && (
+            <p className="text-xs text-gray-400 font-medium flex items-center gap-1">
+              <MapPin size={11} className="text-purple-400" />
+              {ciudadActual.name} — {clienteActual.name}
+            </p>
+          )}
+        </div>
       </div>
 
       {/* Gráficas principales */}

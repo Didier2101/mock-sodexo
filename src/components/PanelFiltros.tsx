@@ -1,4 +1,4 @@
-import { MapPin, Briefcase, Calendar, Filter } from 'lucide-react';
+import { MapPin, Building2, Calendar, Filter, CalendarDays } from 'lucide-react';
 import { mockClients } from '../data';
 import type { ClientAccount } from '../data';
 
@@ -60,7 +60,7 @@ export default function PanelFiltros({
         {/* Selector de Cliente */}
         <div className="flex flex-col gap-1">
           <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
-            <Briefcase size={12} className="text-purple-700 shrink-0" /> Cliente
+            <Building2 size={12} className="text-purple-700 shrink-0" /> Cliente
           </label>
           <div className="flex items-center bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 hover:border-purple-300 transition-all shadow-xs">
             <select
@@ -94,7 +94,7 @@ export default function PanelFiltros({
         {/* Periodo Analítico */}
         <div className="flex flex-col gap-1">
           <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
-            <Calendar size={12} className="text-purple-700 shrink-0" /> Periodo Analítico
+            <CalendarDays size={12} className="text-purple-700 shrink-0" /> Periodo Analítico
           </label>
           <div className="flex items-center bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 hover:border-purple-300 transition-all shadow-xs">
             <select

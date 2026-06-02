@@ -27,15 +27,13 @@ export default function AppShell() {
 
   // Mock Data para el modal de Gestión de Clientes
   const mockClientsList = [
-    { id: 1, name: "Opain - El Dorado", city: "Bogotá", activeLocations: 2, devices: 24, status: "Activo" },
-    { id: 2, name: "Bancolombia Premium", city: "Medellín", activeLocations: 1, devices: 18, status: "Activo" },
-    { id: 3, name: "Sodexo Corporativo", city: "Bogotá", activeLocations: 1, devices: 8, status: "Activo" },
+    { id: 2, name: "Bancolombia", city: "Bogotá, Medellín, Cali", activeLocations: 3, devices: 16, status: "Activo" },
   ];
 
   // Mock Data para el modal de Gestión de Permisos / Usuarios
   const mockUsersList = [
     { id: 1, name: "Didier Administrador", email: "didier@sodexo.com", role: "Administrador Global", scope: "Todos", status: "Activo" },
-    { id: 2, name: "Juan Pérez", email: "juan.perez@sodexo.com", role: "Supervisor Local", scope: "Terminal 1 - Opain", status: "Activo" },
+    { id: 2, name: "Juan Pérez", email: "juan.perez@sodexo.com", role: "Supervisor Local", scope: "Sede Dirección General Centro - Bancolombia", status: "Activo" },
     { id: 3, name: "Maria Restrepo", email: "maria.restrepo@sodexo.com", role: "Supervisor Local", scope: "Sede Poblado - Bancolombia", status: "Inactivo" },
   ];
 

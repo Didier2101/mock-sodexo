@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { mockClients, getSimulatedTime } from '../data';
-import { CheckCircle, MapPin, AlertCircle, Radio } from 'lucide-react';
+import { CheckCircle, MapPin, AlertCircle, Radio, Scroll, SoapDispenserDroplet, Sparkles, Wind, Siren, ClipboardList, BellRing } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useFilter } from '../context/FilterContext';
 
@@ -14,26 +14,53 @@ export interface AlertItem {
   floor_name: string;
   restroom_id: number;
   restroom_name: string;
-  alert_type: 'PAPEL' | 'JABON' | 'ASEO' | 'AGUA';
+  alert_type: 'PAPEL' | 'JABON' | 'ASEO' | 'olor';
   status: 'PENDIENTE' | 'ATENDIDO';
   created_at: string;
 }
+
+const alertStyles = {
+  PAPEL: {
+    bg: 'bg-blue-50 border-blue-100 text-blue-700',
+    iconColor: 'text-blue-500',
+    label: 'Papel',
+    Icon: Scroll,
+  },
+  JABON: {
+    bg: 'bg-purple-50 border-purple-100 text-purple-700',
+    iconColor: 'text-purple-500',
+    label: 'Jabón',
+    Icon: SoapDispenserDroplet,
+  },
+  ASEO: {
+    bg: 'bg-amber-50 border-amber-100 text-amber-700',
+    iconColor: 'text-amber-500',
+    label: 'Aseo',
+    Icon: Sparkles,
+  },
+  olor: {
+    bg: 'bg-emerald-50 border-emerald-100 text-emerald-700',
+    iconColor: 'text-emerald-500',
+    label: 'Olor',
+    Icon: Wind,
+  },
+};
 
 // Generación programática de un gran historial de alertas (~400 registros)
 const generateAlerts = (): AlertItem[] => {
   const alertsList: AlertItem[] = [];
   let alertId = 1000;
 
-  // Alertas activas pendientes (hoy) para la sede 101 y otras sedes
+  // Alertas activas pendientes (hoy) para la sede 201 y otras sedes
   alertsList.push({
     id: 501,
-    client_id: 1,
-    client_name: "Opain - El Dorado",
-    sede_id: 101,
-    sede_name: "Terminal 1 - Muelle Internacional",
-    floor_name: "PISO 2 - SALAS DE ESPERA (A1)",
-    restroom_id: 11,
-    restroom_name: "Baño Zona Embarque A1",
+    client_id: 2,
+    client_name: "Bancolombia",
+    sede_id: 201,
+    sede_name: "Bancolombia - Sede Dirección General Centro",
+    floor_name: "PISO 3",
+    restroom_id: 21,
+    restroom_name: "Baño Torre A Piso 3",
     alert_type: "ASEO",
     status: "PENDIENTE",
     created_at: new Date(Date.now() - 1000 * 60 * 12).toISOString()
@@ -41,13 +68,13 @@ const generateAlerts = (): AlertItem[] => {
 
   alertsList.push({
     id: 504,
-    client_id: 1,
-    client_name: "Opain - El Dorado",
-    sede_id: 101,
-    sede_name: "Terminal 1 - Muelle Internacional",
-    floor_name: "PISO 2 - SALAS DE ESPERA (B2)",
+    client_id: 2,
+    client_name: "Bancolombia",
+    sede_id: 201,
+    sede_name: "Bancolombia - Sede Dirección General Centro",
+    floor_name: "PISO 4",
     restroom_id: 100,
-    restroom_name: "Baño Zona Embarque B2",
+    restroom_name: "Baño Torre B Piso 4",
     alert_type: "PAPEL",
     status: "PENDIENTE",
     created_at: new Date(Date.now() - 1000 * 60 * 18).toISOString()
@@ -55,13 +82,13 @@ const generateAlerts = (): AlertItem[] => {
 
   alertsList.push({
     id: 505,
-    client_id: 1,
-    client_name: "Opain - El Dorado",
-    sede_id: 101,
-    sede_name: "Terminal 1 - Muelle Internacional",
-    floor_name: "PISO 1 - LLEGADAS",
+    client_id: 2,
+    client_name: "Bancolombia",
+    sede_id: 201,
+    sede_name: "Bancolombia - Sede Dirección General Centro",
+    floor_name: "PISO 1",
     restroom_id: 101,
-    restroom_name: "Baño Banda de Equipajes",
+    restroom_name: "Baño Lobby Principal",
     alert_type: "JABON",
     status: "PENDIENTE",
     created_at: new Date(Date.now() - 1000 * 60 * 22).toISOString()
@@ -69,27 +96,27 @@ const generateAlerts = (): AlertItem[] => {
 
   alertsList.push({
     id: 506,
-    client_id: 1,
-    client_name: "Opain - El Dorado",
-    sede_id: 101,
-    sede_name: "Terminal 1 - Muelle Internacional",
-    floor_name: "PISO 3 - COMIDAS",
-    restroom_id: 103,
-    restroom_name: "Baño Zona de Comidas",
-    alert_type: "AGUA",
+    client_id: 2,
+    client_name: "Bancolombia",
+    sede_id: 201,
+    sede_name: "Bancolombia - Sede Dirección General Centro",
+    floor_name: "PISO 10",
+    restroom_id: 102,
+    restroom_name: "Baño Piso 10 Directivos",
+    alert_type: "olor",
     status: "PENDIENTE",
     created_at: new Date(Date.now() - 1000 * 60 * 32).toISOString()
   });
 
   alertsList.push({
     id: 502,
-    client_id: 1,
-    client_name: "Opain - El Dorado",
-    sede_id: 102,
-    sede_name: "Terminal 2 - Puente Aéreo",
+    client_id: 2,
+    client_name: "Bancolombia",
+    sede_id: 202,
+    sede_name: "Bancolombia - Sede El Poblado",
     floor_name: "PISO 1",
-    restroom_id: 13,
-    restroom_name: "Baño Público Pasillo Central",
+    restroom_id: 22,
+    restroom_name: "Baño Clientes Lobby Poblado",
     alert_type: "PAPEL",
     status: "PENDIENTE",
     created_at: new Date(Date.now() - 1000 * 60 * 25).toISOString()
@@ -97,13 +124,13 @@ const generateAlerts = (): AlertItem[] => {
 
   alertsList.push({
     id: 503,
-    client_id: 3,
-    client_name: "Sodexo Corporativo",
-    sede_id: 301,
-    sede_name: "Sodexo - Centro de Distribución Calle 13",
+    client_id: 2,
+    client_name: "Bancolombia",
+    sede_id: 203,
+    sede_name: "Bancolombia - Sucursal Unicentro",
     floor_name: "PISO 1",
-    restroom_id: 31,
-    restroom_name: "Baño Operarios Planta 1",
+    restroom_id: 103,
+    restroom_name: "Baño Clientes Unicentro",
     alert_type: "JABON",
     status: "PENDIENTE",
     created_at: new Date(Date.now() - 1000 * 60 * 45).toISOString()
@@ -111,7 +138,7 @@ const generateAlerts = (): AlertItem[] => {
 
   // Generar alertas resueltas para todos los días individuales (0 a 30) de forma optimizada
   const timeRanges = Array.from({ length: 31 }, (_, i) => i);
-  const alertTypes: ('PAPEL' | 'JABON' | 'ASEO' | 'AGUA')[] = ['PAPEL', 'JABON', 'ASEO', 'AGUA'];
+  const alertTypes: ('PAPEL' | 'JABON' | 'ASEO' | 'olor')[] = ['PAPEL', 'JABON', 'ASEO', 'olor'];
 
   mockClients.forEach(client => {
     client.cities.forEach(city => {
@@ -127,12 +154,12 @@ const generateAlerts = (): AlertItem[] => {
 
               // No duplicar las activas
               if (daysAgo === 0 && (
-                (restroom.id === 11 && type === 'ASEO') ||
-                (restroom.id === 13 && type === 'PAPEL') ||
-                (restroom.id === 31 && type === 'JABON') ||
+                (restroom.id === 21 && type === 'ASEO') ||
+                (restroom.id === 22 && type === 'PAPEL') ||
+                (restroom.id === 103 && type === 'JABON') ||
                 (restroom.id === 100 && type === 'PAPEL') ||
                 (restroom.id === 101 && type === 'JABON') ||
-                (restroom.id === 103 && type === 'AGUA')
+                (restroom.id === 102 && type === 'olor')
               )) {
                 continue;
               }
@@ -186,7 +213,7 @@ const getProfessionalAlertInstruction = (alert: AlertItem) => {
     personas = visitsOnDay.length;
 
     // Filtrar clics exactos de ese tipo de alerta en ese día
-    const clickType = alert.alert_type.toLowerCase() as 'papel' | 'jabon' | 'aseo' | 'agua';
+    const clickType = alert.alert_type.toLowerCase() as 'papel' | 'jabon' | 'aseo' | 'olor';
     const clicksOnDay = foundRestroom.clicks_historicos.filter(c => c.timestamp.startsWith(alertDateStr) && c.type === clickType);
     timbres = clicksOnDay.length;
   }
@@ -201,7 +228,7 @@ const getProfessionalAlertInstruction = (alert: AlertItem) => {
 
   const insumo = alert.alert_type === 'PAPEL' ? 'papel' :
     alert.alert_type === 'JABON' ? 'jabón' :
-      alert.alert_type === 'AGUA' ? 'agua' : 'aseo general';
+      alert.alert_type === 'olor' ? 'olor' : 'aseo general';
 
   return `Por favor, enviar personal de aseo a la ubicación ${alert.floor_name} (${alert.restroom_name || 'Baño'}) ya que ingresaron ${personas} personas y han tocado ${timbres} veces el timbre de alerta por falta de ${insumo}.`;
 };
@@ -278,7 +305,12 @@ export default function Alerts() {
       {/* ENCABEZADO DINÁMICO */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
+          <p className="text-xs font-black text-red-500 uppercase tracking-widest flex items-center gap-1.5 mb-1">
+            <Siren size={12} className="text-red-500" />
+            Central de Alertas IoT
+          </p>
           <h1 className="text-2xl font-black text-slate-950 tracking-tight flex flex-wrap items-center gap-2">
+            <BellRing size={20} className="text-slate-400" />
             Despacho de Novedades IoT
             {isSupervisor && (
               <span className="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded-md font-mono font-black uppercase tracking-wider">
@@ -286,7 +318,8 @@ export default function Alerts() {
               </span>
             )}
           </h1>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-500 mt-0.5 flex items-center gap-1.5">
+            <ClipboardList size={13} className="text-gray-400 shrink-0" />
             {isSupervisor
               ? `Monitoreando incidencias en tiempo real para tu asignación operativa actual.`
               : 'Historial macro y panel global de alertas generadas por sensores IoT en todas las cuentas activas.'}
@@ -298,8 +331,8 @@ export default function Alerts() {
           <button
             onClick={() => setFilterByShift(prev => !prev)}
             className={`flex items-center gap-2 px-3.5 py-2 rounded-xl border text-xs font-bold transition-all shadow-xs cursor-pointer ${filterByShift
-                ? 'bg-purple-950 border-purple-900 text-white shadow-md'
-                : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+              ? 'bg-purple-950 border-purple-900 text-white shadow-md'
+              : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
               }`}
           >
             <Radio size={14} className={filterByShift ? 'text-purple-300 animate-pulse' : 'text-slate-400'} />
@@ -355,12 +388,16 @@ export default function Alerts() {
                     </p>
                   </div>
 
-                  <span className={`px-2 py-0.5 font-black text-[9px] rounded-sm tracking-wide ${alert.alert_type === 'JABON' ? 'bg-amber-100 text-amber-800' :
-                      alert.alert_type === 'PAPEL' ? 'bg-blue-100 text-blue-800' :
-                        alert.alert_type === 'AGUA' ? 'bg-cyan-100 text-cyan-800' : 'bg-purple-100 text-purple-800'
-                    }`}>
-                    FALTA {alert.alert_type}
-                  </span>
+                  {(() => {
+                    const style = alertStyles[alert.alert_type];
+                    const Icon = style.Icon;
+                    return (
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 font-black text-[9px] border rounded-full uppercase tracking-wider ${style.bg}`}>
+                        <Icon size={10} className={style.iconColor} />
+                        <span>Falta {style.label}</span>
+                      </span>
+                    );
+                  })()}
                 </div>
 
                 {isPending && (
@@ -425,10 +462,16 @@ export default function Alerts() {
                     <td className="p-3 font-semibold text-slate-800">{alert.sede_name}</td>
                     <td className="p-3 text-gray-500 font-medium">{alert.floor_name}</td>
                     <td className="p-3">
-                      <span className={`px-2 py-0.5 text-[10px] font-bold rounded ${isPending ? 'bg-red-50 text-red-700' : 'bg-gray-100 text-gray-500'
-                        }`}>
-                        {alert.alert_type}
-                      </span>
+                      {(() => {
+                        const style = alertStyles[alert.alert_type];
+                        const Icon = style.Icon;
+                        return (
+                          <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 font-bold text-[10px] border rounded-md uppercase tracking-wider ${style.bg}`}>
+                            <Icon size={11} className={style.iconColor} />
+                            <span>{style.label}</span>
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td className="p-3 text-gray-400 font-medium">
                       {new Date(alert.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}

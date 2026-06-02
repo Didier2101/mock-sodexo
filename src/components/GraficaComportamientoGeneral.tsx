@@ -1,4 +1,5 @@
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from 'recharts';
+import { Footprints, MousePointerClick, TrendingUp, Activity } from 'lucide-react';
 import type { DatoTendencia } from './tipos';
 
 interface PropsGraficaComportamientoGeneral {
@@ -14,20 +15,25 @@ export default function GraficaComportamientoGeneral({ datos, nombreCiudad }: Pr
     <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col gap-4">
       {/* Encabezado */}
       <div className="flex items-start justify-between">
-        <div>
-          <h3 className="text-xs font-black text-slate-900 uppercase tracking-tight">Comportamiento General</h3>
-          <p className="text-[11px] text-gray-400 font-medium mt-0.5">
-            Tendencia de visitas y pulsaciones — últimos 30 días · {nombreCiudad}
-          </p>
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 bg-slate-100 rounded-lg">
+            <TrendingUp size={14} className="text-slate-600" />
+          </div>
+          <div>
+            <h3 className="text-xs font-black text-slate-900 uppercase tracking-tight">Comportamiento General</h3>
+            <p className="text-[11px] text-gray-400 font-medium mt-0.5">
+              Tendencia de visitas y pulsaciones — últimos 30 días · {nombreCiudad}
+            </p>
+          </div>
         </div>
-        {/* Leyenda de líneas */}
+        {/* Leyenda de líneas con iconos */}
         <div className="flex gap-3 shrink-0">
           <div className="flex items-center gap-1.5">
-            <span className="inline-block w-5 h-[2px] rounded-full bg-[#0EA5E9]" />
+            <Footprints size={10} className="text-[#0EA5E9]" />
             <span className="text-[9px] font-bold text-slate-500 uppercase">Visitas</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="inline-block w-5 h-[2px] rounded-full bg-[#830AD1]" style={{ borderTop: '2px dashed #830AD1' }} />
+            <MousePointerClick size={10} className="text-[#830AD1]" />
             <span className="text-[9px] font-bold text-slate-500 uppercase">Pulsaciones</span>
           </div>
         </div>
@@ -77,19 +83,29 @@ export default function GraficaComportamientoGeneral({ datos, nombreCiudad }: Pr
         </ResponsiveContainer>
       </div>
 
-      {/* Métricas resumen 30 días */}
+      {/* Métricas resumen 30 días con iconos */}
       <div className="grid grid-cols-2 gap-3 border-t border-slate-50 pt-3">
-        <div className="bg-sky-50 rounded-xl p-3">
-          <p className="text-[22px] font-black leading-none text-[#0EA5E9]">
-            {totalVisitas.toLocaleString()}
-          </p>
-          <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wide mt-1">Total Visitas (30 días)</p>
+        <div className="bg-sky-50 rounded-xl p-3 flex items-center gap-3">
+          <div className="p-2 bg-sky-100 rounded-lg shrink-0">
+            <Footprints size={16} className="text-[#0EA5E9]" />
+          </div>
+          <div>
+            <p className="text-[20px] font-black leading-none text-[#0EA5E9]">
+              {totalVisitas.toLocaleString()}
+            </p>
+            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wide mt-0.5">Total Visitas (30 días)</p>
+          </div>
         </div>
-        <div className="bg-purple-50 rounded-xl p-3">
-          <p className="text-[22px] font-black leading-none text-[#830AD1]">
-            {totalPulsaciones.toLocaleString()}
-          </p>
-          <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wide mt-1">Total Pulsaciones (30 días)</p>
+        <div className="bg-purple-50 rounded-xl p-3 flex items-center gap-3">
+          <div className="p-2 bg-purple-100 rounded-lg shrink-0">
+            <Activity size={16} className="text-[#830AD1]" />
+          </div>
+          <div>
+            <p className="text-[20px] font-black leading-none text-[#830AD1]">
+              {totalPulsaciones.toLocaleString()}
+            </p>
+            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wide mt-0.5">Total Pulsaciones (30 días)</p>
+          </div>
         </div>
       </div>
     </div>
